@@ -1,0 +1,97 @@
+└── index/
+│   ├── bannerEbit.html → 234 tokens
+│   ├── bannerRodape.html → 1,005 tokens
+│   ├── bannersBig.html → 626 tokens
+│   ├── bannersDuplos.html → 363 tokens
+│   ├── bannersEsporte.html → 691 tokens
+│   ├── depoimentosHome.html → 38,805 tokens
+│   ├── finalRodape.html → 4,603 tokens
+│   ├── formasPag.html → 2,412 tokens
+│   ├── header.html → 56,083 tokens
+│   ├── homeBannerPrincipal.html → 1,305 tokens
+│   ├── infosRodape.html → 3,509 tokens
+│   ├── menuBar.html → 42,545 tokens
+│   ├── menuRodape.html → 5,608 tokens
+│   ├── newsletter__container.html → 1,285 tokens
+│   ├── pitchbarHome.html → 2,595 tokens
+│   ├── selosFinal.html → 1,100 tokens
+│   ├── supCategoria.html → 1,957 tokens
+│   ├── tabs-moda-acessorios.html → 13,528 tokens
+│   ├── topoRodape.html → 3,346 tokens
+│   ├── uappiIcon.html → 265 tokens
+│   ├── vitrine-home-black-kit.html → 29,668 tokens
+│   ├── vitrine-home-black-outlet.html → 644,823 tokens
+│   ├── vitrineHome2.html → 21,905 tokens
+│   ├── vitrineHome3.html → 22,035 tokens
+│   └── vitrineTop20.html → 1,641 tokens
+├── secoes/ → 901,937 tokens
+│   ├── 01.abefb7d.svg → 1,393 tokens
+│   ├── 01.f99ef1a.svg → 462 tokens
+│   ├── 03.f3c5809.svg → 736 tokens
+│   ├── 03.fd04bd1.svg → 1,493 tokens
+│   ├── 04.88ddfe2.svg → 2,611 tokens
+│   ├── 05.e0cc06e.svg → 5,608 tokens
+│   ├── 06.4d61f68.svg → 1,694 tokens
+│   ├── 07.8d5f548.svg → 627 tokens
+│   ├── 0d1234383b6ec811055db41c42a162df.svg → 2,082 tokens
+│   ├── 10.3fa8833.svg → 935 tokens
+│   ├── 11.e034f67.svg → 1,546 tokens
+│   ├── 12.e906bcc.svg → 5,622 tokens
+│   ├── 18e73c41b0a58f446ccbbdcfd6921abe.svg → 2,948 tokens
+│   ├── 1a01789fdaa19745902113ccadbfe737.svg → 2,866 tokens
+│   ├── 255e978a2a4cfdf25aa7fc8bd3a35510.svg → 898 tokens
+│   ├── 28e1a21e309f9d8773583741255e5d2c.svg → 1,686 tokens
+│   ├── 337b8930c651f381b48372941497d870.svg → 455 tokens
+│   ├── 3bca36c1775d66c986af3d407723fdad.svg → 569 tokens
+│   ├── 3f55cb891147c87443ba64fc504f914b.svg → 1,388 tokens
+│   ├── 408a6ee9abfdcc28a27055e21e5b7138.svg → 724 tokens
+│   ├── 46c485fcea31d2b240ff943e44298993.svg → 1,664 tokens
+│   ├── 4a639c69595bfc2b5b06b0ddcd74bc08.svg → 1,816 tokens
+│   ├── 4a6cefc887f1c816a4f424b3d4fc6227.svg → 3,314 tokens
+│   ├── 4eeeba770ee3f66913d2dabde9f249c4.svg → 3,182 tokens
+│   ├── 5601e4eb4abaa695ae5f31df7eefd924.svg → 1,272 tokens
+│   ├── 5941e99151dbe7391e1ce096f1d2f991.svg → 2,190 tokens
+│   ├── 604da71722f10969329f318bf003a613.svg → 1,028 tokens
+│   ├── 66a59198e458da84ea95fc79650cdded.svg → 2,521 tokens
+│   ├── 6d307cd5152a0dbee6cc175d73f599db.svg → 2,962 tokens
+│   ├── 7151e6a1b6bb4d0bb7d96cb6eefb6d1a.svg → 887 tokens
+│   ├── 7d0cda6e6f4c9687935aca6a8a81ff83.svg → 1,196 tokens
+│   ├── 7fcb5decbc0a7494cd0122a792db9930.svg → 903 tokens
+│   ├── 8975ab37353662a38df31706b96eefe1.svg → 7,315 tokens
+│   ├── 8af3fa08b39767af4f145efedcad3446.svg → 1,051 tokens
+│   ├── 9ccdf451f3b19314a27ef6347778aae5.svg → 1,224 tokens
+│   ├── ac6602413e5b2c1338a5efaad8939a9f.svg → 1,322 tokens
+│   ├── ace3118d8ec16ce1dad5302bcffa92e6.svg → 1,341 tokens
+│   ├── bbc2a84f7afc810b1d886be187ede79f.svg → 881 tokens
+│   ├── carrinho-vazio.svg → 508 tokens
+│   ├── f(1).txt → 2,388 tokens
+│   ├── f(2).txt → 2,502 tokens
+│   ├── f(3).txt → 2,524 tokens
+│   ├── f.txt → 2,393 tokens
+│   ├── f70bf3bd1ed27a2f43ee2c8db6c1c9d8.svg → 1,932 tokens
+│   ├── f77261e0dec2514333ed6bf06dbb5010.svg → 5,085 tokens
+│   ├── icon-product-card.svg → 1,176 tokens
+│   ├── logo-deluca.svg → 3,530 tokens
+│   ├── logo.b3d268e.svg → 2,765 tokens
+│   ├── msg.svg → 677 tokens
+│   ├── phone.svg → 922 tokens
+│   ├── saved_resource(1).html → 215 tokens
+│   ├── saved_resource.html → 208 tokens
+│   ├── star-gray.svg → 162 tokens
+│   ├── star-yellow.svg → 158 tokens
+│   ├── tel.1c645c9.svg → 878 tokens
+│   ├── tel.af811ac.svg → 713 tokens
+│   ├── tiny.svg → 5,424 tokens
+│   ├── uappi.e30eeb1.svg → 1,517 tokens
+│   ├── user.3974782.svg → 712 tokens
+│   ├── wcookie-consent.css → 1,595 tokens
+├── Suplementos_ comprar suplementos alimentares é na Growth!_files/ → 110,396 tokens
+├── arvore_completa.txt → 175,081 tokens
+├── arvore_html_completa.py → 407 tokens
+├── arvore_tokens.txt → 0 tokens
+├── BeautifulSoup.py → 550 tokens
+├── contar_tokens_arvore.py → 580 tokens
+├── index.html → 780,041 tokens
+└── Suplementos_ comprar suplementos alimentares é na Growth!.html → 1,290,716 tokens
+
+Total da pasta raiz: 3,259,708 unmanaged tokens
