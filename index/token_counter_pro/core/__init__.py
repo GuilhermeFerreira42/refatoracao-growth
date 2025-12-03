@@ -1,16 +1,3 @@
-# Importa o que deve ser público do scanner
-from .scanner import (
-    TreeNode, 
-    scan_directory, 
-    read_file_content, 
-    natural_sort_key
-)
-
-# Importa o que deve ser público do counter
-from .counter import (
-    count_tokens, 
-    get_encoder_info,
-    get_tokenization_details,
-    TIKTOKEN_AVAILABLE
-)
-
+from .tree import TreeNode
+from .scanner import scan_directory, natural_sort_key, TEXT_EXTENSIONS
+from .counter import TIKTOKEN_AVAILABLE, count_tokens, get_encoder_info, get_tokenization_details
