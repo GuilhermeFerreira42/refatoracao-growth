@@ -10,7 +10,7 @@ from .counter import count_tokens # Necessário para contar tokens APÓS o scan
 
 # Lista de extensões de texto conhecidas (fast-path)
 TEXT_EXTENSIONS: Set[str] = {
-    '.py', '.txt', '.js', '.html', '.css', '.md', '.json', '.xml', '.c', '.h', 
+    '.py', '.txt', '.js', '.html', '.pdf', '.css', '.md', '.json', '.xml', '.c', '.h', 
     '.cpp', '.java', '.go', '.rs', '.ts', '.tsx', '.jsx', '.scss', '.sh', '.yaml', 
     '.ini', '.log', '.rst', '.vue', '.mts', '.mjs', '.cjs', '.tf', '.tfvars', '.toml',
     '.gitattributes', '.gitignore', '.editorconfig' # Adicionadas extensões comuns
@@ -22,7 +22,7 @@ IGNORED_BINARIES: Set[str] = {
     '.mp3', '.wav', '.ogg', # Áudio
     '.mp4', '.avi', '.mov', # Vídeo
     '.zip', '.rar', '.7z', '.tar', '.gz', # Arquivos comprimidos
-    '.pdf', '.exe', '.dll', '.so', '.dylib', '.obj', '.bin', '.db', '.dat' # Outros binários
+     '.exe', '.dll', '.so', '.dylib', '.obj', '.bin', '.db', '.dat' # Outros binários
 }
 
 MAX_FILE_SIZE = 10 * 1024 * 1024 # 10MB
