@@ -2,14 +2,13 @@ import wx
 import threading
 import sys
 import os
-from typing import Optional, List # Importa List
+from typing import Optional, List 
 from .project_panel import ProjectPanel
 from .text_panel import TextPanel
 from core import scan_directory, get_encoder_info, count_tokens 
 
 class TokenCounterFrame(wx.Frame):
     def __init__(self, parent, title):
-        # ... (código __init__ e setup UI) ...
         super().__init__(parent, title=title, size=(1200, 710))
         self.scanner_thread: Optional[threading.Thread] = None
         self.cancel_flag = threading.Event()
@@ -83,21 +82,37 @@ class TokenCounterFrame(wx.Frame):
         self.SetStatusText("Totais de Tokens Selecionados atualizados.", 0)
         self.project_panel.status_text.SetLabel("Pronto para usar.")
 
-    # MUDANÇA: Substitui wx.DirDialog por wx.FileDialog para permitir multi-seleção de arquivos
-    def on_open_folder(self, event):
-        """
-        Lida com o botão 'Abrir Arquivo(s)/Pasta'.
-        Permite a multi-seleção de arquivos, substituindo a seleção de uma única pasta.
-        A seleção de pastas pode funcionar dependendo da implementação do wxWidgets na plataforma.
-        """
+    # MUDANÇA: Novas funções para lidar com a abertura separada de Pastas e Arquivos (conforme ProjectPanel)
+    
+    def on_open_folders(self, event):
+        """Lida com o botão 'Adicionar Pasta(s)', usando wx.DirDialog para selecionar uma pasta."""
         paths = []
+        # O DirDialog padrão permite a seleção de uma única pasta
+        dlg = wx.DirDialog(
+            self, 
+            "Selecione a Pasta do Projeto", 
+            defaultPath=os.getcwd(),
+            style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST 
+        )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            paths = [dlg.GetPath()] # Retorna uma lista com a pasta selecionada
         
-        # Usa wx.FileDialog com as flags para abrir, multi-seleção e existência de arquivo/pasta.
+        dlg.Destroy()
+
+        if paths:
+            self.start_initial_scan(paths)
+
+    def on_open_files(self, event):
+        """Lida com o botão 'Adicionar Arquivo(s)' com suporte a multi-seleção de arquivos."""
+        paths = []
+        # O FileDialog com FD_MULTIPLE permite a seleção de múltiplos arquivos.
         dlg = wx.FileDialog(
             self, 
-            "Selecione Arquivos e/ou Pasta(s) do Projeto", 
+            "Selecione Arquivo(s) para Escaneamento", 
             defaultDir=os.getcwd(),
-            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
+            wildcard="Todos os arquivos (*.*)|*.*"
         )
 
         if dlg.ShowModal() == wx.ID_OK:

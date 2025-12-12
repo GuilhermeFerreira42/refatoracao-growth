@@ -480,10 +480,29 @@ class ProjectPanel(wx.Panel):
         
         # Área de Ação Superior
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.btn_open = wx.Button(left_panel, label="Abrir Arquivo(s)/Pasta") 
+        
+        # Define uma largura mínima para garantir que todos os botões tenham o mesmo tamanho.
+        # Ajuste este valor se necessário para acomodar as labels.
+        MIN_BTN_WIDTH = 100 
+        
+        # NOVO BOTÃO 1: Para Pastas (substitui o antigo)
+        self.btn_open_folders = wx.Button(left_panel, label="Adicionar Pasta(s)") 
+        self.btn_open_folders.SetMinSize(wx.Size(MIN_BTN_WIDTH, -1)) # <--- Fixa a largura
+
+        # NOVO BOTÃO 2: Para Arquivos
+        self.btn_open_files = wx.Button(left_panel, label="Adicionar Arquivo(s)") 
+        self.btn_open_files.SetMinSize(wx.Size(MIN_BTN_WIDTH, -1)) # <--- Fixa a largura
+
         self.btn_clear = wx.Button(left_panel, label="Limpar")
-        btn_sizer.Add(self.btn_open, 1, wx.RIGHT, 2)
+        self.btn_clear.SetMinSize(wx.Size(MIN_BTN_WIDTH, -1)) # <--- Fixa a largura
+        
+        # Adiciona os 3 botões ao sizer
+        # CORREÇÃO: proportion=0 para evitar que os botões se expandam/contraiam
+        # com a largura do painel lateral, mantendo o tamanho fixo definido.
+        btn_sizer.Add(self.btn_open_folders, 0, wx.RIGHT, 2)
+        btn_sizer.Add(self.btn_open_files, 0, wx.RIGHT, 2)
         btn_sizer.Add(self.btn_clear, 0)
+        
         left_sizer.Add(btn_sizer, 0, wx.EXPAND | wx.ALL, 5)
         
         self.tree_ctrl = wx.TreeCtrl(left_panel, style=wx.TR_DEFAULT_STYLE | wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT) 
@@ -526,7 +545,9 @@ class ProjectPanel(wx.Panel):
         self.SetSizer(main_sizer)
 
     def _setup_bindings(self):
-        self.btn_open.Bind(wx.EVT_BUTTON, self.frame.on_open_folder) 
+        # BINDINGS ATUALIZADOS para os novos botões
+        self.btn_open_folders.Bind(wx.EVT_BUTTON, self.frame.on_open_folders) 
+        self.btn_open_files.Bind(wx.EVT_BUTTON, self.frame.on_open_files)
         self.btn_clear.Bind(wx.EVT_BUTTON, self.frame.on_clear_all)
         
         # EVT_TREE_SEL_CHANGED (clique simples) para destaque na Aba 0 (Resumo)
