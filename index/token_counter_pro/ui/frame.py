@@ -10,7 +10,7 @@ from core import scan_directory, get_encoder_info, count_tokens
 class TokenCounterFrame(wx.Frame):
     def __init__(self, parent, title):
         # ... (código __init__ e setup UI) ...
-        super().__init__(parent, title=title, size=(1200, 800))
+        super().__init__(parent, title=title, size=(1200, 710))
         self.scanner_thread: Optional[threading.Thread] = None
         self.cancel_flag = threading.Event()
         self.CreateStatusBar(2)

@@ -8,7 +8,7 @@ from core.scanner import TreeNode
 if TYPE_CHECKING:
     from .frame import TokenCounterFrame
 
-# Constante para arquivos sem extensão (substitui o antigo IGNORED_EXT_KEY para esta função)
+# Constante para arquivos sem extensão
 NO_EXT_KEY = "<sem_extensão>" 
 
 # ----------------------------------------
@@ -35,31 +35,43 @@ class ConsolidatedTreeTab(wx.Panel):
         self.text_output.SetForegroundColour(self.DEFAULT_FG_COLOR)
         
         self.highlight_range = (0, 0) 
+        # CORREÇÃO CRÍTICA: Mapeia o caminho completo do arquivo para o intervalo de caracteres no TextCtrl.
+        self.path_to_line_range: Dict[str, Tuple[int, int]] = {} 
         
         sizer.Add(self.text_output, 1, wx.EXPAND | wx.ALL, 0)
         self.SetSizer(sizer)
 
     def update_data(self, root_node: Optional[TreeNode]):
-        """Gera a árvore ASCII completa."""
+        """
+        Gera a árvore ASCII completa e constrói o mapa de caminhos para intervalos de linha.
+        """
         self.text_output.Clear()
+        self.path_to_line_range.clear() # Limpa o mapa para nova construção
         
         if not root_node:
             self.text_output.SetValue("Nenhum projeto carregado.")
             return
 
         # 1. Cabeçalho (Raiz)
+        start_pos = 0 
         root_tokens_str = f"[ {root_node.total_recursive_tokens:>6,} tokens ]"
         root_line = self._format_line(f"{os.path.basename(root_node.full_path)}:.", root_tokens_str)
+        
+        # Armazena o path da raiz
+        end_pos = start_pos + len(root_line)
+        self.path_to_line_range[root_node.full_path] = (start_pos, end_pos + 1) # +1 para o \n
         self.text_output.AppendText(root_line + "\n")
 
         # 2. Gera o corpo da árvore recursivamente
-        self._write_ascii_tree(root_node, prefix="")
+        # Passa a posição inicial para o cálculo de offset
+        self._write_ascii_tree(root_node, prefix="", current_pos=end_pos + 1) 
 
         # Rola para o topo e reseta o destaque
         self.text_output.ShowPosition(0)
         self.highlight_range = (0, 0)
 
-    def _write_ascii_tree(self, node: TreeNode, prefix: str):
+    # Assinatura mudada: agora recebe e retorna a posição atual no TextCtrl (current_pos)
+    def _write_ascii_tree(self, node: TreeNode, prefix: str, current_pos: int) -> int:
         """Função recursiva para desenhar linhas no estilo tree /f."""
         children = sorted(node.children, key=lambda n: (not n.is_dir, natural_sort_key(n.name)))
         
@@ -70,15 +82,13 @@ class ConsolidatedTreeTab(wx.Panel):
             t_val = child.total_recursive_tokens if child.is_dir else child.token_count
             token_str = f"[ {t_val:>6,} tokens ]"
 
+            name_override = None # Usado apenas para arquivos ignorados
+            
             if child.is_dir:
                 connector = "\\---" if is_last else "+---"
                 tree_part = f"{prefix}{connector}{child.name}"
                 
                 line = self._format_line(tree_part, token_str)
-                self.text_output.AppendText(line + "\n")
-                
-                child_prefix = prefix + ("    " if is_last else "|   ")
-                self._write_ascii_tree(child, child_prefix)
                 
             else:
                 # Arquivos
@@ -89,23 +99,43 @@ class ConsolidatedTreeTab(wx.Panel):
                     tree_part = f"{prefix}    {child.name}"
                 
                 # ADIÇÃO: Marca arquivos que foram ignorados na visualização da árvore
-                display_name = child.name
                 if not child.is_text:
                     size_str = f"({child.size_bytes:,} bytes)"
-                    display_name = f"{child.name} [IGNORADO {size_str}]"
-
-
-                line = self._format_line(tree_part, token_str, name_override=display_name)
-                self.text_output.AppendText(line + "\n")
+                    size_str_display = f"({(child.size_bytes / (1024 * 1024)):.2f} MB)" if child.size_bytes > 1024*1024 else size_str
+                    display_name = f"{child.name} [IGNORADO {size_str_display}]"
+                    name_override = display_name
+                    
+                line = self._format_line(tree_part, token_str, name_override=name_override)
+            
+            # Cálculo de Posição (Independente de ser arquivo ou diretório)
+            line_start = current_pos
+            line_end = line_start + len(line)
+            
+            # Armazena o intervalo de caracteres usando o full_path como chave única
+            self.path_to_line_range[child.full_path] = (line_start, line_end + 1) # +1 para o '\n'
+            
+            self.text_output.AppendText(line + "\n")
+            current_pos = line_end + 1 # Atualiza a posição para o próximo nó
+            
+            if child.is_dir:
+                child_prefix = prefix + ("    " if is_last else "|   ")
+                # Chama recursivamente e atualiza current_pos com o resultado
+                current_pos = self._write_ascii_tree(child, child_prefix, current_pos) 
+                
+        return current_pos # Retorna a posição final para o nível acima
 
     def _format_line(self, left_text: str, right_text: str, name_override: str = None) -> str:
         """Cria uma linha com padding de espaços para alinhar os tokens à direita."""
         TARGET_WIDTH = 100 
         
         if name_override:
+            # Tenta encontrar e substituir apenas o nome no final da string
             original_name = os.path.basename(left_text.split()[-1])
-            temp_left_text = left_text.replace(original_name, name_override)
-            left_text = temp_left_text
+            if original_name in left_text:
+                temp_left_text = left_text.replace(original_name, name_override)
+                left_text = temp_left_text
+            else:
+                 pass 
 
         len_left = len(left_text)
         len_right = len(right_text)
@@ -117,57 +147,35 @@ class ConsolidatedTreeTab(wx.Panel):
         return f"{left_text}{padding}{right_text}"
         
     def select_path_in_tree(self, path: str, node_map: Dict[str, TreeNode]):
-        """Remove o destaque anterior e aplica um novo para o path fornecido."""
-        node = node_map.get(path)
-        if not node: return
+        """
+        CORREÇÃO CRÍTICA: Usa o mapa (path_to_line_range) para encontrar o intervalo exato
+        do texto, evitando a busca por substring (bug do nome parcial).
+        """
+        # 1. Tenta recuperar o intervalo diretamente pelo path (chave única)
+        line_range = self.path_to_line_range.get(path)
+        
+        if not line_range: 
+            self.highlight_range = (0, 0) 
+            return # Não é possível destacar se não encontrar
 
-        # 1. Remove o destaque anterior 
+        line_start, line_end_exclusive = line_range
+        
+        # 2. Remove o destaque anterior 
         if self.highlight_range[1] > self.highlight_range[0]:
             self.text_output.SetStyle(self.highlight_range[0], self.highlight_range[1], wx.TextAttr(self.DEFAULT_FG_COLOR, self.DEFAULT_BG_COLOR))
         
-        # 2. Encontra o texto a ser procurado (Nome do item + Tag de Tokens)
-        if node.is_dir:
-            t_val = node.total_recursive_tokens
-        else:
-            t_val = node.token_count
-            
-        token_str = f"[ {t_val:>6,} tokens ]"
-        
-        # A busca precisa incluir a tag [IGNORADO] se o arquivo não for de texto
-        search_name = node.name
-        if not node.is_text and not node.is_dir:
-            search_name = f"{node.name} [IGNORADO ({node.size_bytes:,} bytes)]"
-        
-        search_target = f"{search_name}{token_str}" 
-        full_text = self.text_output.GetValue()
-        
-        # Encontra a posição do início da substring (nome+tokens)
-        content_start_pos = full_text.find(search_name)
-        
-        if content_start_pos == -1:
-            self.highlight_range = (0, 0) 
-            return 
-
-        # Encontra o início real da linha (depois do '\n' anterior)
-        line_start = full_text.rfind('\n', 0, content_start_pos) + 1
-        
-        # Encontra o fim da linha (próximo '\n' ou fim do texto)
-        line_end = full_text.find('\n', content_start_pos)
-        if line_end == -1: 
-            line_end = len(full_text)
-            
         # 3. Aplica o novo destaque
-        self.highlight_range = (line_start, line_end)
+        self.highlight_range = (line_start, line_end_exclusive)
         
         attr = wx.TextAttr(self.DEFAULT_FG_COLOR, self.HIGHLIGHT_BG_COLOR)
-        self.text_output.SetStyle(line_start, line_end, attr)
+        self.text_output.SetStyle(line_start, line_end_exclusive, attr)
         
         # 4. Rola para a posição
         self.text_output.ShowPosition(line_start)
 
 
 class SelectedFilesTab(wx.Panel):
-    """Aba 2: Lista de Arquivos (Filtro e Detalhes) com ordenação por coluna. Inclui Ignorados por Extensão real."""
+    """Aba 2: Lista de Arquivos (Filtro e Detalhes) com ordenação por coluna."""
     def __init__(self, parent, project_panel):
         super().__init__(parent)
         self.project_panel = project_panel
@@ -185,9 +193,9 @@ class SelectedFilesTab(wx.Panel):
         self.list_ctrl = wx.ListCtrl(self, style=wx.LC_REPORT | wx.BORDER_SUNKEN | wx.LC_HRULES | wx.LC_VRULES | wx.LC_SINGLE_SEL) 
         
         self.list_ctrl.InsertColumn(0, "Nome do Arquivo", width=250)
-        self.list_ctrl.InsertColumn(1, "Extensão", width=120) # Aumenta a largura para caber <sem_extensão>
+        self.list_ctrl.InsertColumn(1, "Extensão", width=120) 
         self.list_ctrl.InsertColumn(2, "Tokens / Status", width=150) 
-        self.list_ctrl.InsertColumn(3, "Caminho Completo", width=300)
+        self.list_ctrl.InsertColumn(3, "Caminho Completo", width=300) # Coluna escondida para dados
         
         sizer.Add(self.list_ctrl, 1, wx.EXPAND | wx.ALL, 5)
         
@@ -217,12 +225,18 @@ class SelectedFilesTab(wx.Panel):
             
         self._refresh_list()
 
-    def on_item_activated(self, event):
-        """Dispara a prévia ao dar duplo clique/Enter no item da lista."""
-        idx = event.GetIndex()
-        if idx >= 0 and idx < self.list_ctrl.GetItemCount():
-            path = self.current_map[idx]
-            self.project_panel.on_file_selected_for_preview(path)
+    def on_item_activated(self, event: wx.ListEvent):
+        """
+        Dispara a prévia ao dar duplo clique/Enter no item da lista.
+        Usa o caminho completo (Coluna 3) como chave única.
+        """
+        item_index = event.GetIndex()
+        if item_index >= 0 and item_index < self.list_ctrl.GetItemCount():
+            # Recupera o caminho completo da Coluna 3 (chave única)
+            path = self.list_ctrl.GetItemText(item_index, col=3) 
+            
+            if path:
+                self.project_panel.on_file_selected_for_preview(path)
 
     def update_data(self, all_file_nodes: List[TreeNode], total_proj_tokens: int):
         """Atualiza a lista com base no filtro de busca (Sincronização). Recebe todos os arquivos."""
@@ -247,17 +261,18 @@ class SelectedFilesTab(wx.Panel):
         displayed_nodes = []
 
         for node in self.all_nodes_cache:
-            if term and term not in node.name.lower():
+            # Busca pelo nome ou pelo caminho completo (coluna 3)
+            if term and term not in node.name.lower() and term not in node.full_path.lower():
                 continue
             displayed_nodes.append(node)
 
         # --- Lógica de Ordenação ---
         col_map = {
             0: lambda n: natural_sort_key(n.name),
-            1: lambda n: self._get_ext_display(n), # Usa a extensão real
+            1: lambda n: self._get_ext_display(n), 
             # ORDENAÇÃO DE STATUS: Textos (contagem de tokens) primeiro, depois Ignorados (tamanho)
-            2: lambda n: (0 if n.is_text else 1, n.token_count if n.is_text else n.size_bytes),                     
-            3: lambda n: n.full_path.lower(),               
+            2: lambda n: (0 if n.is_text else 1, n.token_count if n.is_text else n.size_bytes),            
+            3: lambda n: n.full_path.lower(),             
         }
         
         sort_key_func = col_map.get(self.sort_column)
@@ -266,13 +281,12 @@ class SelectedFilesTab(wx.Panel):
         
         # --- Fim da Lógica de Ordenação ---
 
-        self.current_map = {} 
         for i, node in enumerate(displayed_nodes):
             
             ext_display = self._get_ext_display(node)
 
             idx = self.list_ctrl.InsertItem(i, node.name) 
-            self.list_ctrl.SetItem(idx, 1, ext_display) # Exibe a extensão real ou <sem_extensão>
+            self.list_ctrl.SetItem(idx, 1, ext_display) 
             
             # MUDANÇA: Exibe tokens OU status de ignorado/binário
             if node.is_text:
@@ -286,8 +300,8 @@ class SelectedFilesTab(wx.Panel):
                 token_display = f"IGNORADO {size_str}"
                 
             self.list_ctrl.SetItem(idx, 2, token_display)
-            self.list_ctrl.SetItem(idx, 3, node.full_path)
-            self.current_map[i] = node.full_path
+            # CHAVE DE CORREÇÃO: Armazena o full_path na coluna 3
+            self.list_ctrl.SetItem(idx, 3, node.full_path) 
 
         self.list_ctrl.Thaw()
         
@@ -301,7 +315,7 @@ class SelectedFilesTab(wx.Panel):
 
 
 class ExtensionFilterTab(wx.Panel):
-    """Aba 3: Resumo por Extensões (Visualização e Ordenação). Cada extensão não lida individualmente."""
+    """Aba 3: Resumo por Extensões (Visualização e Ordenação)."""
     def __init__(self, parent, project_panel):
         super().__init__(parent)
         self.project_panel = project_panel
@@ -345,9 +359,8 @@ class ExtensionFilterTab(wx.Panel):
         self.list_ctrl.Freeze()
         self.list_ctrl.DeleteAllItems()
 
-        # Remove a lógica de tratamento especial do [IGNORADO]
         col_map = {
-            0: lambda item: item[0],           
+            0: lambda item: item[0],          
             1: lambda item: item[1]['count'],  
             2: lambda item: item[1]['tokens'], 
         }
@@ -355,7 +368,6 @@ class ExtensionFilterTab(wx.Panel):
         sort_key_func = col_map.get(self.sort_column)
 
         if sort_key_func:
-            # Ordena todos os itens, incluindo <sem_extensão>
             sorted_exts = sorted(self.cached_summary_list, 
                                  key=sort_key_func, 
                                  reverse=not self.sort_ascending)
@@ -368,7 +380,7 @@ class ExtensionFilterTab(wx.Panel):
             
             token_display = f"{data['tokens']:,}"
             
-            # Opção: colorir extensões com 0 tokens para destaque visual (opcional, mas útil)
+            # Opção: colorir extensões com 0 tokens para destaque visual
             if data['tokens'] == 0:
                 self.list_ctrl.SetItemTextColour(idx, wx.Colour(255, 100, 100)) # Vermelho suave
             else:
@@ -380,9 +392,6 @@ class ExtensionFilterTab(wx.Panel):
 
 
 class FilePreviewTab(wx.Panel):
-    # ... (Sem alterações necessárias nesta classe, pois ela já lida com o status de binário/ignorado com base em node.is_text)
-    # ... (Mantenha o conteúdo da classe FilePreviewTab do código anterior)
-    
     """Aba 4: Prévia (Com suporte a carregamento assíncrono e binário)."""
     def __init__(self, parent, project_panel):
         super().__init__(parent)
@@ -401,6 +410,11 @@ class FilePreviewTab(wx.Panel):
         sizer.Add(self.preview_text, 1, wx.EXPAND | wx.ALL, 5)
         self.SetSizer(sizer)
     
+    def clear_preview(self):
+        """Limpa a prévia, útil ao selecionar um diretório."""
+        self.lbl_info.SetLabel("Selecione um arquivo para ver a prévia.")
+        self.preview_text.Clear()
+        
     def update_status_loading(self, path: str, tokens: int):
         """Mostra status de carregamento para arquivos de texto grandes."""
         file_name = os.path.basename(path)
@@ -466,7 +480,6 @@ class ProjectPanel(wx.Panel):
         
         # Área de Ação Superior
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        # O botão agora deve disparar um diálogo que suporta MULTI-SELEÇÃO de arquivos/pastas (a ser implementado em frame.py)
         self.btn_open = wx.Button(left_panel, label="Abrir Arquivo(s)/Pasta") 
         self.btn_clear = wx.Button(left_panel, label="Limpar")
         btn_sizer.Add(self.btn_open, 1, wx.RIGHT, 2)
@@ -513,16 +526,17 @@ class ProjectPanel(wx.Panel):
         self.SetSizer(main_sizer)
 
     def _setup_bindings(self):
-        # self.frame.on_open_folder (frame.py) agora deve lidar com a abertura multi-seleção
         self.btn_open.Bind(wx.EVT_BUTTON, self.frame.on_open_folder) 
         self.btn_clear.Bind(wx.EVT_BUTTON, self.frame.on_clear_all)
         
+        # EVT_TREE_SEL_CHANGED (clique simples) para destaque na Aba 0 (Resumo)
         self.tree_ctrl.Bind(wx.EVT_TREE_SEL_CHANGED, self.on_tree_selection_changed)
-
+        # EVT_TREE_ITEM_ACTIVATED (duplo clique) para abrir a Aba 3 (Prévia)
+        self.tree_ctrl.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.on_tree_select) 
+        
     def on_drop_path(self, paths: List[str]):
         """Lida com a entrada de caminhos múltiplos (arquivos e/ou pastas) por drag and drop."""
         if paths: 
-            # Chama a função de scan com a lista completa de caminhos
             self.frame.start_initial_scan(paths) 
         
     def on_tree_selection_changed(self, event):
@@ -532,30 +546,59 @@ class ProjectPanel(wx.Panel):
         """
         item = event.GetItem()
         if item.IsOk():
+            # ItemData é o full_path
             path = self.tree_ctrl.GetItemData(item)
             
             self.notebook.SetSelection(0) 
             
             if path in self.node_map:
+                # O destaque agora usa o lookup no mapa para precisão
                 self.tab_tree.select_path_in_tree(path, self.node_map)
 
+    def on_tree_select(self, event: wx.TreeEvent):
+        """
+        Lida com o duplo clique (EVT_TREE_ITEM_ACTIVATED) na TreeCtrl.
+        Ação: Abrir a aba de Prévia para o arquivo selecionado.
+        """
+        item = event.GetItem()
+        
+        if item.IsOk() and item != self.tree_ctrl.GetRootItem():
+            # Recupera o caminho completo do ItemData (a chave única)
+            selected_path = self.tree_ctrl.GetItemData(item)
+            
+            if selected_path:
+                node = self.node_map.get(selected_path)
+                
+                if node and not node.is_dir:
+                    # Se for um arquivo, orquestra a prévia
+                    self.on_file_selected_for_preview(node.full_path)
+                elif node and node.is_dir:
+                    # Opcional: Limpar a prévia se um diretório for selecionado
+                    self.tab_prev.clear_preview()
+                    
     def on_file_selected_for_preview(self, path: str):
-        """Orquestra o carregamento assíncrono do conteúdo do arquivo na aba de prévia (acessado por duplo-clique)."""
+        """
+        Orquestra o carregamento do conteúdo do arquivo na aba de prévia.
+        Recebe o `full_path` como chave única.
+        """
         node = self.node_map.get(path)
         if not node: return
 
-        self.notebook.SetSelection(3) 
+        self.notebook.SetSelection(3) # Mudar para a aba Prévia
         
         if not node.is_text:
             self.tab_prev.update_status_binary(path, node.size_bytes)
             return
 
+        # Arquivo de texto: Inicia o carregamento (que é quase instantâneo, pois o conteúdo já está em cache)
         self.tab_prev.update_status_loading(path, node.token_count)
 
+        # O carregamento é assíncrono, mas busca no cache interno (`self.file_contents`)
         threading.Thread(target=self._load_preview_async, args=(path, node.token_count), daemon=True).start()
 
     def _load_preview_async(self, path: str, tokens: int):
         """Função rodando em thread para carregar e truncar o preview de arquivos grandes."""
+        # CHAVE DE CORREÇÃO: Busca o conteúdo usando o caminho completo como chave
         content = self.file_contents.get(path, "") 
         
         wx.CallAfter(self.tab_prev.update_preview_content, path, content, tokens)
@@ -565,12 +608,11 @@ class ProjectPanel(wx.Panel):
     def handle_scan_result(self, results: Dict[str, Any]):
         """
         Processa o resultado do scan e calcula os totais (Sincronização).
-        MUDANÇA: Usa a extensão real ou NO_EXT_KEY para agrupamento, sem o [IGNORADO] global.
         """
         self.root_path = results['root_path']
         self.root_node = results['root_node']
         self.file_contents = results['file_contents']
-        self.node_map = results['node_map']
+        self.node_map = results['node_map'] 
         
         self.all_files = [] 
         self.all_text_files = [] 
@@ -585,7 +627,6 @@ class ProjectPanel(wx.Panel):
             file_name, ext = os.path.splitext(node.name)
             ext = ext.lower()
             
-            # NOVO: Usa a extensão real, ou <sem_extensão>
             map_key = ext if ext else NO_EXT_KEY 
 
             if map_key not in self.extension_map: self.extension_map[map_key] = []
@@ -605,11 +646,9 @@ class ProjectPanel(wx.Panel):
         self.tree_ctrl.DeleteAllItems()
         if not self.root_node: return
         
-        # MUDANÇA: Se o root_node for um diretório raiz virtual (quando há múltiplos inputs), 
-        # a exibição pode ser ajustada para "Múltiplos Itens Selecionados" ou o nome do diretório raiz.
-        
         root_item = self.tree_ctrl.AddRoot(os.path.basename(self.root_path))
-        self.tree_ctrl.SetItemData(root_item, self.root_path)
+        # Armazena o full_path da raiz no ItemData
+        self.tree_ctrl.SetItemData(root_item, self.root_path) 
         self._build_tree_recursive(root_item, self.root_node)
         self.tree_ctrl.Expand(root_item)
 
@@ -623,7 +662,8 @@ class ProjectPanel(wx.Panel):
                 display_name = f"{child.name} [IGNORADO {size_str}]"
             
             new_item = self.tree_ctrl.AppendItem(parent_item, display_name)
-            self.tree_ctrl.SetItemData(new_item, child.full_path)
+            # Armazena o full_path completo no ItemData para identificação única
+            self.tree_ctrl.SetItemData(new_item, child.full_path) 
             
             if child.is_dir:
                 self._build_tree_recursive(new_item, child)
@@ -638,7 +678,6 @@ class ProjectPanel(wx.Panel):
         # 1. Resumo extensões
         ext_summary = {}
         for ext, nodes in self.extension_map.items():
-            # A soma de tokens é calculada apenas para arquivos de texto (token_count > 0).
             tot = sum(n.token_count for n in nodes) 
             ext_summary[ext] = {'count': len(nodes), 'tokens': tot}
 
@@ -661,7 +700,6 @@ class ProjectPanel(wx.Panel):
         self.tab_tree.update_data(None)
         self.tab_files.update_data([], 0)
         self.tab_exts.update_data({})
-        self.tab_prev.preview_text.Clear()
-        self.tab_prev.lbl_info.SetLabel("Selecione um arquivo para ver a prévia.")
+        self.tab_prev.clear_preview()
         self.progress_bar.SetValue(0)
         self.status_text.SetLabel("Aguardando...")
